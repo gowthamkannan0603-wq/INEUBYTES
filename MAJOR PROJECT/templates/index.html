@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CineMatch — AI Movie Recommendations</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:        #0d1117;
+      --surface:   #161b22;
+      --card:      #1c2230;
+      --border:    #30363d;
+      --accent:    #e50914;
+      --accent2:   #f5a623;
+      --text:      #e6edf3;
+      --muted:     #8b949e;
+      --success:   #3fb950;
+      --radius:    12px;
+    }
+    body {
+      font-family: "Inter", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    nav {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .logo { font-size: 1.3rem; font-weight: 700; color: var(--accent); letter-spacing: -0.5px; }
+    .logo span { color: var(--text); }
+    .nav-tag {
+      font-size: 0.72rem; background: var(--accent);
+      color: #fff; padding: 2px 8px; border-radius: 20px;
+      font-weight: 600; letter-spacing: 0.5px;
+    }
+    .hero {
+      text-align: center;
+      padding: 3.5rem 1.5rem 2.5rem;
+      background: radial-gradient(ellipse at 50% -10%, rgba(229,9,20,0.12) 0%, transparent 65%);
+    }
+    .hero h1 { font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 700; line-height: 1.2; margin-bottom: 0.75rem; }
+    .hero h1 em { color: var(--accent); font-style: normal; }
+    .hero p { color: var(--muted); font-size: 1rem; max-width: 520px; margin: 0 auto 2rem; }
+    .search-wrap {
+      max-width: 560px; margin: 0 auto;
+      display: flex; gap: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 50px;
+      padding: 6px 6px 6px 20px;
+      transition: border-color 0.2s;
+    }
+    .search-wrap:focus-within { border-color: var(--accent); }
+    .search-wrap input {
+      flex: 1; background: none; border: none; outline: none;
+      color: var(--text); font-size: 0.97rem; font-family: inherit;
+    }
+    .search-wrap input::placeholder { color: var(--muted); }
+    .search-wrap button {
+      background: var(--accent); color: #fff;
+      border: none; border-radius: 50px;
+      padding: 10px 22px; font-size: 0.9rem;
+      font-weight: 600; cursor: pointer;
+      font-family: inherit; transition: opacity 0.15s;
+      white-space: nowrap;
+    }
+    .search-wrap button:hover { opacity: 0.88; }
+    .search-wrap button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .suggestions {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      justify-content: center; margin-top: 1rem;
+    }
+    .chip {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 20px; padding: 5px 14px;
+      font-size: 0.8rem; color: var(--muted);
+      cursor: pointer; transition: all 0.15s;
+    }
+    .chip:hover { border-color: var(--accent); color: var(--text); }
+    main { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+    .status-msg {
+      text-align: center; padding: 1rem;
+      border-radius: var(--radius); margin-bottom: 1.5rem;
+      font-size: 0.92rem; display: none;
+    }
+    .status-msg.error   { background: rgba(229,9,20,0.12); border: 1px solid rgba(229,9,20,0.3); color: #ff6b6b; display: block; }
+    .status-msg.loading { background: var(--surface); border: 1px solid var(--border); color: var(--muted); display: block; }
+    .input-card {
+      background: var(--surface);
+      border: 1px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 1.2rem 1.5rem;
+      margin-bottom: 1.5rem;
+      display: none;
+    }
+    .input-card.show { display: block; }
+    .input-card .label {
+      font-size: 0.72rem; font-weight: 600;
+      color: var(--accent); letter-spacing: 1px;
+      text-transform: uppercase; margin-bottom: 0.4rem;
+    }
+    .input-card h2 { font-size: 1.3rem; font-weight: 700; }
+    .input-card .meta { color: var(--muted); font-size: 0.85rem; margin-top: 4px; }
+    .section-header {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 1.2rem; display: none;
+    }
+    .section-header.show { display: flex; }
+    .section-header h3 { font-size: 1rem; font-weight: 600; }
+    .section-header .count-badge {
+      background: var(--accent); color: #fff;
+      border-radius: 20px; padding: 1px 10px; font-size: 0.75rem; font-weight: 600;
+    }
+    .movie-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1rem;
+    }
+    .movie-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.2rem;
+      transition: transform 0.15s, border-color 0.15s;
+      cursor: default;
+    }
+    .movie-card:hover { transform: translateY(-3px); border-color: #444d56; }
+    .card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+    .movie-title { font-size: 1rem; font-weight: 600; line-height: 1.35; }
+    .sim-badge {
+      flex-shrink: 0;
+      background: rgba(245,166,35,0.15);
+      color: var(--accent2);
+      border: 1px solid rgba(245,166,35,0.3);
+      border-radius: 6px; padding: 2px 8px;
+      font-size: 0.75rem; font-weight: 700; white-space: nowrap;
+    }
+    .card-meta {
+      display: flex; flex-wrap: wrap; gap: 6px;
+      margin: 8px 0; font-size: 0.78rem;
+    }
+    .tag {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 5px; padding: 2px 8px; color: var(--muted);
+    }
+    .director-line { font-size: 0.8rem; color: var(--muted); margin-bottom: 8px; }
+    .director-line span { color: var(--text); font-weight: 500; }
+    .rating-row { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+    .stars { color: #f5c518; font-size: 0.85rem; letter-spacing: 1px; }
+    .rating-num { font-size: 0.82rem; font-weight: 600; color: var(--text); }
+    .rating-max { font-size: 0.75rem; color: var(--muted); }
+    .overview {
+      font-size: 0.8rem; color: var(--muted);
+      line-height: 1.5; border-top: 1px solid var(--border);
+      padding-top: 8px; margin-top: 4px;
+      display: -webkit-box; -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical; overflow: hidden;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff; border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle; margin-right: 6px;
+    }
+    footer {
+      border-top: 1px solid var(--border);
+      text-align: center; padding: 1.5rem;
+      font-size: 0.78rem; color: var(--muted);
+    }
+    footer span { color: var(--accent); }
+    @media (max-width: 500px) {
+      nav { padding: 0 1rem; }
+      .hero { padding: 2rem 1rem 1.5rem; }
+      .movie-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<nav>
+  <div class="logo">Cine<span>Match</span></div>
+  <div class="nav-tag">AI Powered</div>
+</nav>
+<section class="hero">
+  <h1>Discover Your Next<br><em>Favourite Movie</em></h1>
+  <p>Enter any movie title and our AI will find the most similar films based on genre, story, director and cast.</p>
+  <div class="search-wrap">
+    <input id="movieInput" type="text" placeholder="e.g. Inception, The Dark Knight, Parasite…" autocomplete="off" />
+    <button id="searchBtn" onclick="getRecommendations()">Find Movies</button>
+  </div>
+  <div class="suggestions">
+    <span class="chip" onclick="quickSearch('Inception')">Inception</span>
+    <span class="chip" onclick="quickSearch('Parasite')">Parasite</span>
+    <span class="chip" onclick="quickSearch('The Dark Knight')">The Dark Knight</span>
+    <span class="chip" onclick="quickSearch('Dune')">Dune</span>
+    <span class="chip" onclick="quickSearch('Spirited Away')">Spirited Away</span>
+    <span class="chip" onclick="quickSearch('Pulp Fiction')">Pulp Fiction</span>
+  </div>
+</section>
+<main>
+  <div id="statusMsg" class="status-msg"></div>
+  <div id="inputCard"  class="input-card"></div>
+  <div id="sectionHeader" class="section-header">
+    <h3>Recommended for you</h3>
+    <span id="countBadge" class="count-badge"></span>
+  </div>
+  <div id="movieGrid" class="movie-grid"></div>
+</main>
+<footer>
+  Built with <span>♥</span> by Gowtham K &nbsp;|&nbsp; iNeuBytes AI Internship &nbsp;|&nbsp; Course: AIINB10626
+</footer>
+<script>
+  const input  = document.getElementById("movieInput");
+  const btn    = document.getElementById("searchBtn");
+  const status = document.getElementById("statusMsg");
+  const grid   = document.getElementById("movieGrid");
+  const header = document.getElementById("sectionHeader");
+  const icard  = document.getElementById("inputCard");
+  const badge  = document.getElementById("countBadge");
+  input.addEventListener("keydown", e => { if (e.key === "Enter") getRecommendations(); });
+  function quickSearch(title) {
+    input.value = title;
+    getRecommendations();
+  }
+  function setLoading(on) {
+    btn.disabled = on;
+    btn.innerHTML = on
+      ? '<span class="spinner"></span>Searching…'
+      : "Find Movies";
+  }
+  function showStatus(msg, type) {
+    status.textContent = msg;
+    status.className = `status-msg ${type}`;
+  }
+  function clearResults() {
+    grid.innerHTML   = "";
+    icard.innerHTML  = "";
+    icard.classList.remove("show");
+    header.classList.remove("show");
+    status.className = "status-msg";
+    status.textContent = "";
+  }
+  function starsFor(rating) {
+    const filled = Math.round(rating / 2);
+    return "★".repeat(filled) + "☆".repeat(5 - filled);
+  }
+  function renderInputCard(movie) {
+    icard.innerHTML = `
+      <div class="label">You searched for</div>
+      <h2>${movie.title} (${movie.year})</h2>
+      <div class="meta">${movie.genres} &nbsp;·&nbsp; Dir. ${movie.director} &nbsp;·&nbsp; ★ ${movie.rating}</div>
+    `;
+    icard.classList.add("show");
+  }
+  function renderCard(m) {
+    const pct = Math.round(m.similarity * 100);
+    return `
+      <div class="movie-card">
+        <div class="card-top">
+          <div class="movie-title">${m.title}</div>
+          <div class="sim-badge">${pct}% match</div>
+        </div>
+        <div class="card-meta">
+          ${m.genres.split(", ").map(g => `<span class="tag">${g.trim()}</span>`).join("")}
+          <span class="tag">${m.year}</span>
+        </div>
+        <div class="director-line">Director: <span>${m.director}</span></div>
+        <div class="rating-row">
+          <span class="stars">${starsFor(m.rating)}</span>
+          <span class="rating-num">${m.rating}</span>
+          <span class="rating-max">/ 10</span>
+        </div>
+        <div class="overview">${m.overview}</div>
+      </div>
+    `;
+  }
+  async function getRecommendations() {
+    const title = input.value.trim();
+    if (!title) { input.focus(); return; }
+    clearResults();
+    setLoading(true);
+    showStatus("Finding movies similar to "" + title + ""…", "loading");
+    try {
+      const res = await fetch("/recommend", {
+        method : "POST",
+        headers: { "Content-Type": "application/json" },
+        body   : JSON.stringify({ movie: title, top_n: 6 })
+      });
+      const data = await res.json();
+      if (!data.success) {
+        showStatus("⚠ " + data.error, "error");
+        return;
+      }
+      status.className = "status-msg";   // hide status
+      renderInputCard(data.input_movie);
+      badge.textContent = data.count + " results";
+      header.classList.add("show");
+      grid.innerHTML = data.recommendations.map(renderCard).join("");
+    } catch (err) {
+      showStatus("⚠ Could not connect to the server. Make sure the Flask app is running.", "error");
+    } finally {
+      setLoading(false);
+    }
+  }
+</script>
+</body>
+</html>
