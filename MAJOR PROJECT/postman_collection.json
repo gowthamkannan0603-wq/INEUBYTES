@@ -1,0 +1,144 @@
+{
+  "info": {
+    "name": "CineMatch — Recommendation API",
+    "description": "Postman test collection for the iNeuBytes Major Project\nAuthor: Gowtham K | INBT020009 | AIINB10626",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:5000", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "1. Health Check",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/health",
+        "description": "Confirms the server is running and model is loaded."
+      },
+      "expected_response": {
+        "status": 200,
+        "body": {
+          "status": "ok",
+          "model_ready": true,
+          "movies_count": 50,
+          "message": "Recommendation server is running"
+        }
+      }
+    },
+    {
+      "name": "2. Recommend — Valid Movie",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/recommend",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"movie\": \"Inception\", \"top_n\": 6}"
+        },
+        "description": "Returns 6 movies similar to Inception."
+      },
+      "expected_response": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "input_movie": { "title": "Inception", "year": 2010 },
+          "recommendations": "array of 6 movies",
+          "count": 6
+        }
+      }
+    },
+    {
+      "name": "3. Recommend — Partial Title Match",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/recommend",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"movie\": \"dark knight\", \"top_n\": 4}"
+        },
+        "description": "Tests substring matching — 'dark knight' should match 'The Dark Knight'."
+      },
+      "expected_response": {
+        "status": 200,
+        "body": { "success": true, "count": 4 }
+      }
+    },
+    {
+      "name": "4. Recommend — Movie Not Found (Error Case)",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/recommend",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"movie\": \"xyznonexistentmovie123\"}"
+        },
+        "description": "Tests error handling when movie is not in the database."
+      },
+      "expected_response": {
+        "status": 404,
+        "body": {
+          "success": false,
+          "error": "Movie 'xyznonexistentmovie123' not found. Try a different title."
+        }
+      }
+    },
+    {
+      "name": "5. Recommend — Empty Input (Validation Error)",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/recommend",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"movie\": \"\"}"
+        },
+        "description": "Tests that empty movie field returns a 400 validation error."
+      },
+      "expected_response": {
+        "status": 400,
+        "body": {
+          "success": false,
+          "error": "The 'movie' field cannot be empty."
+        }
+      }
+    },
+    {
+      "name": "6. List All Movies",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/movies",
+        "description": "Returns all 50 movies in the database."
+      },
+      "expected_response": {
+        "status": 200,
+        "body": { "success": true, "count": 50, "movies": "array" }
+      }
+    },
+    {
+      "name": "7. List Movies by Genre Filter",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/movies?genre=scifi",
+        "description": "Filters movies by genre keyword 'scifi'."
+      },
+      "expected_response": {
+        "status": 200,
+        "body": { "success": true, "movies": "filtered array" }
+      }
+    },
+    {
+      "name": "8. Wrong Method on /recommend (Error Case)",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/recommend",
+        "description": "Tests that GET on a POST-only endpoint returns 405."
+      },
+      "expected_response": {
+        "status": 405,
+        "body": { "success": false, "error": "Method not allowed on this endpoint" }
+      }
+    }
+  ]
+}
